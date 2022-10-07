@@ -1,4 +1,4 @@
-use crate::g::emit_generated_code;
+use crate::gen::emit_generated_code;
 use crate::style_print::log_success;
 use chrono::NaiveDateTime;
 use proc_macro2::TokenStream;

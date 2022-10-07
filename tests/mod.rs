@@ -7,7 +7,7 @@ use std::path::Path;
 use tempdir::TempDir;
 use walkdir::WalkDir;
 
-mod g;
+mod gen;
 mod new;
 
 fn assert_directory_equality(
