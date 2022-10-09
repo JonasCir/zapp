@@ -175,12 +175,21 @@ pub enum SqlCommands {
 
 #[derive(Debug, Subcommand)]
 pub enum GenCommands {
-    Model {
-        model: String,
+    Migration {
+        name: String,
         #[clap(parse(from_os_str), short, long)]
         path: Option<PathBuf>,
     },
-    Help,
+    Entity {
+        name: String,
+        #[clap(parse(from_os_str), short, long)]
+        path: Option<PathBuf>,
+    },
+    GraphQl {
+        name: String,
+        #[clap(parse(from_os_str), short, long)]
+        path: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Subcommand)]

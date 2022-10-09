@@ -1,8 +1,7 @@
 use chrono::Local;
 use clap::Parser;
 use std::env::current_dir;
-use std::fs::File;
-use std::io::BufReader;
+use std::path::PathBuf;
 use zapp::cli::{
     Cli, Commands, ComputeCommands, DbCommands, DockerCommands, GcloudCommands, GcpConfig,
     GenCommands, GhCommands, IamCommands, InitCommands, RunCommands, SqlCommands,
@@ -10,7 +9,8 @@ use zapp::cli::{
 use zapp::compute::*;
 use zapp::db::*;
 use zapp::docker::*;
-use zapp::gen::*;
+use zapp::gcloud::{get_gcp, setup_deployment};
+use zapp::gen::migration::handle_gen_migration;
 use zapp::gh::*;
 use zapp::iam::*;
 use zapp::init::*;
@@ -185,16 +185,17 @@ fn main() {
         Commands::Gen(gen) => {
             let gen_cmd = gen.command.unwrap_or(GenCommands::Help);
             match gen_cmd {
-                GenCommands::Model { model, path } => {
-                    let gen_path_buf = path.unwrap_or_else(|| current_dir().unwrap());
-                    let gen_path = gen_path_buf.as_path();
-                    let date = Local::now();
-                    handle_gen(&model, date.naive_local(), gen_path);
+                GenCommands::Migration { name, path } => {
+                    let path_buf = path.unwrap_or_else(|| current_dir().unwrap());
+                    let path = path_buf.as_path();
+                    handle_gen_migration(&name, &path);
                 }
-                _ => {
-                    let log = "To see example;\n\n $zapp run --help";
-                    log_error(log);
+                GenCommands::Entity { name, path } => {
+                    let path_buf = path.unwrap_or_else(|| current_dir().unwrap());
+                    let path = path_buf.as_path();
+                    handle_gen_entity(&name, &path);
                 }
+                GenCommands::GraphQl { .. } => {}
             }
         }
         Commands::Db(db) => {
@@ -220,44 +221,4 @@ fn main() {
             }
         }
     }
-}
-
-pub fn get_gcp() -> GcpConfig {
-    let file_name = "gcp_config.json";
-    let f = File::open(file_name).unwrap();
-    let reader = BufReader::new(f);
-    let gcp: GcpConfig = serde_json::from_reader(reader).unwrap();
-    gcp
-}
-
-pub fn setup_deployment(gcp: GcpConfig) {
-    // 1. Create IAM
-    process_create_service_account(&gcp.project_id, &gcp.service_name);
-    process_create_service_account_key(&gcp.project_id, &gcp.service_name);
-    process_add_roles(&gcp.project_id, &gcp.service_name);
-    process_enable_permissions(&gcp.project_id);
-    let log = "Your IAM is all set!";
-    log_success(log);
-    // 2. Create NAT
-    process_create_network(&gcp.project_id, &gcp.service_name);
-    process_create_firewall_tcp(&gcp.project_id, &gcp.service_name);
-    process_create_firewall_ssh(&gcp.project_id, &gcp.service_name);
-    process_create_subnet(&gcp.project_id, &gcp.service_name, &gcp.region);
-    process_create_connector(&gcp.project_id, &gcp.service_name, &gcp.region);
-    process_create_router(&gcp.project_id, &gcp.service_name, &gcp.region);
-    process_create_external_ip(&gcp.project_id, &gcp.service_name, &gcp.region);
-    process_create_nat(&gcp.project_id, &gcp.service_name, &gcp.region);
-    // 3. Create Cloud SQL
-    process_create_sql(
-        &gcp.project_id,
-        &gcp.service_name,
-        &gcp.region,
-        &gcp.network,
-    );
-    // 4. Create Cloud SQL Private Network
-    process_create_ip_range(&gcp.project_id, &gcp.service_name);
-    process_connect_vpc_connector(&gcp.project_id, &gcp.service_name);
-    process_assign_network(&gcp.project_id, &gcp.service_name);
-    // 5. Create Github Actions Workflow
-    build_api_workflow(&gcp.gcr_region());
 }

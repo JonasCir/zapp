@@ -1,8 +1,3 @@
-use crate::gen::entity::process_entity;
-use crate::gen::graphql::mutation::process_graphql_mutation;
-use crate::gen::graphql::query::process_graphql_query;
-use crate::gen::migration::process_migration;
-use chrono::NaiveDateTime;
 use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use std::io::Write;
@@ -13,7 +8,7 @@ use syn::File;
 mod entity;
 mod graphql;
 
-mod migration;
+pub mod migration;
 
 pub(self) fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<Vec<String>> {
     Ok(fs::read_dir(path)?
@@ -47,11 +42,4 @@ pub(self) fn emit_generated_code(
 
     file.write_all(formatted.as_bytes()).unwrap();
     file_path
-}
-
-pub fn handle_gen(model: &str, dt: NaiveDateTime, gen_path: &Path) {
-    process_entity(model, gen_path);
-    process_migration(model, dt, gen_path);
-    process_graphql_mutation(model, gen_path);
-    process_graphql_query(model, gen_path);
 }
